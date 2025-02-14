@@ -13,14 +13,14 @@ type MutexCounterMap struct {
 
 func (cm *MutexCounterMap) Inc(key string) {
 	cm.lock.Lock()
-	defer cm.lock.Unlock()
 	cm.counts[key]++
+	cm.lock.Unlock()
 }
 
 func (cm *MutexCounterMap) GetAndReset() map[string]int64 {
 	cm.lock.Lock()
-	defer cm.lock.Unlock()
 	ret := cm.counts
 	cm.counts = map[string]int64{}
+	cm.lock.Unlock()
 	return ret
 }

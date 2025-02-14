@@ -32,10 +32,10 @@ func (cm *RWMutexCounterMap) Inc(key string) {
 func (cm *RWMutexCounterMap) GetAndReset() map[string]int64 {
 	counts := map[string]int64{}
 	cm.lock.Lock()
-	defer cm.lock.Unlock()
 	for k, v := range cm.counts {
 		counts[k] = v.Load()
 	}
 	cm.counts = make(map[string]*atomic.Int64)
+	cm.lock.Unlock()
 	return counts
 }
