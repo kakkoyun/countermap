@@ -18,7 +18,9 @@ var counterMapImplementations = []struct {
 	//{"sync.RWMutex", func() CounterMap { return NewRWMutexCounterMap() }},
 	{"sync.Mutex", func() CounterMap { return NewMutexCounterMap() }},
 	{"sync.Map", func() CounterMap { return NewSyncMapCounterMap() }},
-	{"xsync.Map", func() CounterMap { return NewXSyncMapCounterMap() }},
+	{"xsync.MapOfCounter", func() CounterMap { return NewXSyncMapCounterMap() }},
+	{"xsync.MapOfInt", func() CounterMap { return NewXSyncMapIntMap() }},
+	{"ShardedCounterMap", func() CounterMap { return NewShardedCounterMap() }},
 	{"sync.Value", func() CounterMap { return NewSyncValueCounterMap() }},
 	{"sync.Pointer", func() CounterMap { return NewSyncPointerCounterMap() }},
 }
