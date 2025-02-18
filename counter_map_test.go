@@ -39,7 +39,12 @@ func BenchmarkCounterMap(b *testing.B) {
 				b.RunParallel(func(p *testing.PB) {
 					i := 0
 					for p.Next() {
-						cm.Inc(endpoints[i%len(endpoints)])
+						// 75% calls go to endpoints[0], 25% cycle through the rest
+						if i%4 == 0 {
+							cm.Inc(endpoints[i/4%len(endpoints)])
+						} else {
+							cm.Inc(endpoints[0])
+						}
 						i++
 					}
 				})
