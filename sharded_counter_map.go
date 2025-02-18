@@ -3,17 +3,30 @@ package countermap
 import (
 	"hash/fnv"
 	"sync"
+	"unsafe"
 )
 
 const numberOfShards = 256
 
-type ShardedCounterMap struct {
-	shards [numberOfShards]shard
-}
+// We assume cache line size is 64 bytes. 128 bytes can also be used.
+const cacheLineSize = 64
 
-type shard struct {
+// shardData holds the fields of a shard excluding the padding.
+type shardData struct {
 	lock   sync.Mutex
 	counts map[string]int64
+}
+
+// shard embeds shardData and adds padding to reach cacheLineSize bytes.
+type shard struct {
+	shardData
+	//lint:ignore U1000 ensure each shard occupies cacheLineSize bytes.
+	// to avoid false sharing.
+	_pad [cacheLineSize - int(unsafe.Sizeof(shardData{}))]byte
+}
+
+type ShardedCounterMap struct {
+	shards [numberOfShards]shard
 }
 
 func NewShardedCounterMap() *ShardedCounterMap {
