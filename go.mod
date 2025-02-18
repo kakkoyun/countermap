@@ -3,7 +3,6 @@ module github.com/felixge/countermap
 go 1.24
 
 require (
-	github.com/puzpuzpuz/xsync/v2 v2.5.1
 	github.com/puzpuzpuz/xsync/v3 v3.5.0
 	github.com/stretchr/testify v1.10.0
 )
