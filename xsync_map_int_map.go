@@ -17,8 +17,11 @@ func NewXSyncMapIntMap() *XSyncMapIntMap {
 }
 
 func (cm *XSyncMapIntMap) Inc(key string) {
-	value, _ := cm.counts.LoadOrStore(key, &atomic.Int64{})
-	value.Add(1)
+	val, ok := cm.counts.Load(key)
+	if !ok {
+		val, _ = cm.counts.LoadOrStore(key, &atomic.Int64{})
+	}
+	val.Add(1)
 }
 
 func (cm *XSyncMapIntMap) GetAndReset() map[string]int64 {

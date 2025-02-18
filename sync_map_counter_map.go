@@ -14,7 +14,10 @@ type SyncMapCounterMap struct {
 }
 
 func (cm *SyncMapCounterMap) Inc(key string) {
-	val, _ := cm.counts.LoadOrStore(key, &atomic.Int64{})
+	val, ok := cm.counts.Load(key)
+	if !ok {
+		val, _ = cm.counts.LoadOrStore(key, &atomic.Int64{})
+	}
 	val.(*atomic.Int64).Add(1)
 }
 

@@ -13,7 +13,10 @@ type XSyncMapCounterMap struct {
 }
 
 func (cm *XSyncMapCounterMap) Inc(key string) {
-	counter, _ := cm.counts.LoadOrStore(key, xsync.NewCounter())
+	counter, ok := cm.counts.Load(key)
+	if !ok {
+		counter, _ = cm.counts.LoadOrStore(key, xsync.NewCounter())
+	}
 	counter.Add(1)
 }
 

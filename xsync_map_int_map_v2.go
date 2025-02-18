@@ -15,8 +15,11 @@ type XSyncV2MapIntMap struct {
 }
 
 func (cm *XSyncV2MapIntMap) Inc(key string) {
-	value, _ := cm.counts.LoadOrStore(key, &atomic.Int64{})
-	value.(*atomic.Int64).Add(1)
+	val, ok := cm.counts.Load(key)
+	if !ok {
+		val, _ = cm.counts.LoadOrStore(key, &atomic.Int64{})
+	}
+	val.(*atomic.Int64).Add(1)
 }
 
 func (cm *XSyncV2MapIntMap) GetAndReset() map[string]int64 {
