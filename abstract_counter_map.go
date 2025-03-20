@@ -28,6 +28,12 @@ type state[K comparable, V counter] struct {
 	cond        *sync.Cond
 }
 
+// reset prepares the state for reuse
+func (s *state[K, V]) reset() {
+	s.counters.Clear()
+	s.inFlightOps.Store(0)
+}
+
 // newState creates a new state with the given counter storage.
 func newState[K comparable, V counter](storage counterStorage[K, V]) *state[K, V] {
 	return &state[K, V]{
@@ -43,6 +49,8 @@ type counterMap[K comparable, V counter] struct {
 	activeState atomic.Pointer[state[K, V]]
 	// Prevents concurrent GetAndReset operations.
 	snapshotLock *sync.RWMutex
+	// Pool for state objects to reduce GC pressure
+	statePool sync.Pool
 
 	// Function to create a counter value.
 	newCounterFn func() V
@@ -59,11 +67,22 @@ func newCounterMap[K comparable, V counter](
 		snapshotLock: &sync.RWMutex{},
 		newCounterFn: newCounterFn,
 		newStorageFn: newStorageFn,
+		statePool: sync.Pool{
+			New: func() any {
+				return newState[K, counter](newStorageFn())
+			},
+		},
 	}
-	// Initialize with an empty state.
-	storage := newStorageFn()
-	cm.activeState.Store(newState(storage))
+	// Initialize with an empty state from the pool.
+	cm.activeState.Store(cm.getStateFromPool())
 	return cm
+}
+
+// getStateFromPool retrieves a state from the pool or creates a new one
+func (cm *counterMap[K, V]) getStateFromPool() *state[K, V] {
+	s := cm.statePool.Get().(*state[K, V])
+	s.reset()
+	return s
 }
 
 // Inc increments the counter for the given key.
@@ -104,8 +123,8 @@ func (cm *counterMap[K, V]) GetAndReset() map[K]int64 {
 	cm.snapshotLock.Lock()
 	defer cm.snapshotLock.Unlock()
 
-	// Create a new empty state for new increments.
-	newState := newState(cm.newStorageFn())
+	// Create a new empty state for new increments from the pool
+	newState := cm.getStateFromPool()
 
 	// Atomically swap the states.
 	oldState := cm.activeState.Swap(newState)
@@ -126,6 +145,9 @@ func (cm *counterMap[K, V]) GetAndReset() map[K]int64 {
 		}
 		return true
 	})
+
+	// Return the old state to the pool.
+	cm.statePool.Put(oldState)
 
 	return result
 }
