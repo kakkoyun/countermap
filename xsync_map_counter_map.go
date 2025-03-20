@@ -1,35 +1,25 @@
 package countermap
 
-import (
-	xsync "github.com/puzpuzpuz/xsync/v3"
-)
+import "github.com/puzpuzpuz/xsync/v3"
 
-func NewXSyncMapCounterMap() *XSyncMapCounterMap {
-	return &XSyncMapCounterMap{counts: xsync.NewMapOf[string, *xsync.Counter]()}
-}
-
+// XSyncMapCounterMap implements CounterMap using xsync.MapOf
 type XSyncMapCounterMap struct {
-	counts *xsync.MapOf[string, *xsync.Counter]
+	*counterMap[string, counter]
 }
 
-func (cm *XSyncMapCounterMap) Inc(key string) {
-	// NOTICE: LoadOrCompute locks the whole map for the duration of the function,
-	// it is not suitable for high-contention scenarios.
-	val, ok := cm.counts.Load(key)
-	if !ok {
-		val, _ = cm.counts.LoadOrStore(key, xsync.NewCounter())
+// NewXSyncMapCounterMap creates a new counter map backed by xsync.MapOf of xsync.Counter.
+func NewXSyncMapCounterMap() CounterMap {
+	// Create function for the counterInt64 type.
+	newCounter := func() counter {
+		return xsync.NewCounter()
 	}
-	val.Inc()
-}
 
-func (cm *XSyncMapCounterMap) GetAndReset() map[string]int64 {
-	ret := map[string]int64{}
-	cm.counts.Range(func(key string, counter *xsync.Counter) bool {
-		val, loaded := cm.counts.LoadAndDelete(key)
-		if loaded {
-			ret[key] = val.Value()
-		}
-		return true
-	})
-	return ret
+	return &XSyncMapCounterMap{
+		counterMap: newCounterMap[string, counter](
+			func() counterStorage[string, counter] {
+				return NewXSyncMapStorage[string, counter]()
+			},
+			newCounter,
+		),
+	}
 }

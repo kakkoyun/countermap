@@ -15,16 +15,16 @@ var counterMapImplementations = []struct {
 	Name string
 	New  func() CounterMap
 }{
-	//{"Unguarded", func() CounterMap { return NewUnguardedCounterMap() }},
-	//{"sync.RWMutex", func() CounterMap { return NewRWMutexCounterMap() }},
+	// {"Unguarded", func() CounterMap { return NewUnguardedCounterMap() }},
+	// {"sync.RWMutex", func() CounterMap { return NewRWMutexCounterMap() }},
+	// {"sync.Value", func() CounterMap { return NewSyncValueCounterMap() }},
+	// {"sync.Pointer", func() CounterMap { return NewSyncPointerCounterMap() }},
 	{"sync.Mutex", func() CounterMap { return NewMutexCounterMap() }},
 	{"sync.Map", func() CounterMap { return NewSyncMapCounterMap() }},
 	{"xsync.MapOfCounter", func() CounterMap { return NewXSyncMapCounterMap() }},
 	{"xsync.MapOfInt", func() CounterMap { return NewXSyncMapIntMap() }},
-	{"ShardedCounterMap", func() CounterMap { return NewShardedCounterMap() }},
-	{"sync.Value", func() CounterMap { return NewSyncValueCounterMap() }},
-	{"sync.Pointer", func() CounterMap { return NewSyncPointerCounterMap() }},
 	{"HaxMap", func() CounterMap { return NewHaxMapCounterMap() }},
+	{"ShardedCounterMap", func() CounterMap { return NewShardedCounterMap() }},
 }
 
 func TestCounterMapBasic(t *testing.T) {
@@ -166,45 +166,45 @@ func BenchmarkCounterMap(b *testing.B) {
 		}
 	})
 
-	// b.Run("ConsistentSnapshot", func(b *testing.B) {
-	// 	for _, impl := range counterMapImplementations {
-	// 		b.Run(impl.Name, func(b *testing.B) {
-	// 			b.ReportAllocs()
+	b.Run("ConsistentSnapshot", func(b *testing.B) {
+		for _, impl := range counterMapImplementations {
+			b.Run(impl.Name, func(b *testing.B) {
+				b.ReportAllocs()
 
-	// 			cm := impl.New()
-	// 			var id atomic.Int64
-	// 			var totalCount atomic.Int64
+				cm := impl.New()
+				var id atomic.Int64
+				var totalCount atomic.Int64
 
-	// 			var fail string
-	// 			doneCh := make(chan struct{})
-	// 			go func() {
-	// 				var sumCounts int64
-	// 				for {
-	// 					select {
-	// 					case <-doneCh:
-	// 						return
-	// 					default:
-	// 						counts := cm.GetAndReset()
-	// 						sumCounts += int64(len(counts))
-	// 						require.GreaterOrEqual(b, sumCounts, totalCount.Load())
-	// 					}
-	// 				}
-	// 			}()
+				var fail string
+				doneCh := make(chan struct{})
+				go func() {
+					var sumCounts int64
+					for {
+						select {
+						case <-doneCh:
+							return
+						default:
+							counts := cm.GetAndReset()
+							sumCounts += int64(len(counts))
+							require.GreaterOrEqual(b, totalCount.Load(), sumCounts)
+						}
+					}
+				}()
 
-	// 			b.RunParallel(func(p *testing.PB) {
-	// 				key := binary.BigEndian.AppendUint64([]byte(fmt.Sprintf("endpoint-%03d-", id.Add(1))), 0)
-	// 				i := uint64(0)
-	// 				for p.Next() {
-	// 					binary.BigEndian.PutUint64(key[len(key)-8:], i)
-	// 					cm.Inc(string(key))
-	// 					totalCount.Add(1)
-	// 					i++
-	// 				}
-	// 			})
+				b.RunParallel(func(p *testing.PB) {
+					key := binary.BigEndian.AppendUint64([]byte(fmt.Sprintf("endpoint-%03d-", id.Add(1))), 0)
+					i := uint64(0)
+					for p.Next() {
+						binary.BigEndian.PutUint64(key[len(key)-8:], i)
+						cm.Inc(string(key))
+						totalCount.Add(1)
+						i++
+					}
+				})
 
-	// 			close(doneCh)
-	// 			require.Empty(b, fail)
-	// 		})
-	// 	}
-	// })
+				close(doneCh)
+				require.Empty(b, fail)
+			})
+		}
+	})
 }
