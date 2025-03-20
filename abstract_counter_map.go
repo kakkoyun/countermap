@@ -83,8 +83,8 @@ func (cm *counterMap[K, V]) Inc(key K) {
 	}()
 
 	// Try to load existing counter.
-	counter, ok := state.counters.Load(key)
-	if !ok {
+	counter, loaded := state.counters.Load(key)
+	if !loaded {
 		// Create a new counter.
 		counter = cm.newCounterFn()
 		actual, loaded := state.counters.LoadOrStore(key, counter)
