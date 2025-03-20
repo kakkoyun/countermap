@@ -13,17 +13,22 @@ type XSyncMapCounterMap struct {
 }
 
 func (cm *XSyncMapCounterMap) Inc(key string) {
-	val, _ := cm.counts.LoadOrCompute(key, func() *xsync.Counter {
-		return xsync.NewCounter()
-	})
+	// NOTICE: LoadOrCompute locks the whole map for the duration of the function,
+	// it is not suitable for high-contention scenarios.
+	val, ok := cm.counts.Load(key)
+	if !ok {
+		val, _ = cm.counts.LoadOrStore(key, xsync.NewCounter())
+	}
 	val.Inc()
 }
 
 func (cm *XSyncMapCounterMap) GetAndReset() map[string]int64 {
 	ret := map[string]int64{}
 	cm.counts.Range(func(key string, counter *xsync.Counter) bool {
-		ret[key] = counter.Value()
-		cm.counts.Delete(key)
+		val, loaded := cm.counts.LoadAndDelete(key)
+		if loaded {
+			ret[key] = val.Value()
+		}
 		return true
 	})
 	return ret

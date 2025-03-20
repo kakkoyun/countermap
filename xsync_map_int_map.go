@@ -17,17 +17,22 @@ func NewXSyncMapIntMap() *XSyncMapIntMap {
 }
 
 func (cm *XSyncMapIntMap) Inc(key string) {
-	val, _ := cm.counts.LoadOrCompute(key, func() *atomic.Int64 {
-		return &atomic.Int64{}
-	})
+	// NOTICE: LoadOrCompute locks the whole map for the duration of the function,
+	// it is not suitable for high-contention scenarios.
+	val, ok := cm.counts.Load(key)
+	if !ok {
+		val, _ = cm.counts.LoadOrStore(key, &atomic.Int64{})
+	}
 	val.Add(1)
 }
 
 func (cm *XSyncMapIntMap) GetAndReset() map[string]int64 {
 	ret := map[string]int64{}
 	cm.counts.Range(func(key string, value *atomic.Int64) bool {
-		ret[key] = int64(value.Load())
-		cm.counts.Delete(key)
+		val, loaded := cm.counts.LoadAndDelete(key)
+		if loaded {
+			ret[key] = val.Load()
+		}
 		return true
 	})
 	return ret
