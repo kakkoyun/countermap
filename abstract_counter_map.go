@@ -123,7 +123,7 @@ func (cm *counterMap[K, V]) GetAndReset() map[K]int64 {
 	cm.snapshotLock.Lock()
 	defer cm.snapshotLock.Unlock()
 
-	// Create a new empty state for new increments from the pool
+	// Create a new empty state for new increments from the pool.
 	newState := cm.getStateFromPool()
 
 	// Atomically swap the states.
@@ -139,7 +139,7 @@ func (cm *counterMap[K, V]) GetAndReset() map[K]int64 {
 	// Process the old state - no more in-flight operations on it.
 	result := make(map[K]int64)
 	oldState.counters.Range(func(key K, _ V) bool {
-		value, loaded := oldState.counters.LoadAndDelete(key)
+		value, loaded := oldState.counters.Load(key)
 		if loaded {
 			result[key] = value.Value()
 		}
